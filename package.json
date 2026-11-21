@@ -1,6 +1,6 @@
 {
   "name": "magpie-agent-tianshu",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Tianshu (天枢 / rivet harness) as a magpie agent: one provider per subscription, so each software's models sit in a channel of their own",
   "type": "module",
   "files": [
