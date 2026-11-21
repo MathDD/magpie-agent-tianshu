@@ -6,8 +6,19 @@
 // This module splits magpie's models by the software each one comes from
 // (the part before "/" in its id) and registers one provider per software,
 // "<software>-magpie", so a subscription's models sit in a channel of their
-// own instead of one crowd. The routing group auto/<model> stays in the
-// "magpie" provider: an id there is not one software's.
+// own instead of one crowd. The routing group auto/<model> is no software's,
+// so it gets a provider of its own too, "auto-magpie"; an id with no
+// "<software>/" part at all falls in there with it.
+//
+// No provider is named "magpie". That key was this plugin's own before the
+// split, and Tianshu keeps a provider's model list in
+// ~/.rivet/provider-keys.json, where a list only ever grows: the models an
+// older version wrote there under "magpie" outlive the plugin that wrote
+// them, and neither reconnecting nor restarting Tianshu clears them (checked
+// against a live install: the pool still listed all 45 after a disconnect and
+// a reconnect). Naming the routing group's provider "auto-magpie" leaves the
+// stale "magpie" entry with no provider to belong to, so an upgrade needs no
+// hand work.
 //
 // The descriptor names no model and no prefix, so magpie writes no model
 // itself and every key connect returns is written as it is (plugged.go: a
@@ -42,32 +53,33 @@ export const agent = {
   // of their own.
 };
 
-// the provider the routing group's models stay in
-const magpie = "magpie";
+// the provider an id with no software of its own is registered under: the
+// routing group's, and anything else with no "<software>/" part
+const auto = "auto-magpie";
 // every other provider is the software of "<software>/<model>", then this
 const suffix = "-magpie";
-// the one group that is not a software's: magpie's own routing group
+// magpie's own routing group, which is not one software's
 const routing = "auto";
 
 // keyFor names the provider a model id is registered under: one provider per
 // software, and the routing group's own for auto/<model>. An id with no
-// "<software>/" part names no software, so it stays in magpie's provider.
+// "<software>/" part names no software, so it goes where the routing group's
+// models do.
 export function keyFor(id) {
-  if (typeof id !== "string") return magpie;
+  if (typeof id !== "string") return auto;
   const at = id.indexOf("/");
-  if (at <= 0 || at === id.length - 1) return magpie;
+  if (at <= 0 || at === id.length - 1) return auto;
   const software = id.slice(0, at);
-  if (software === routing) return magpie;
+  if (software === routing) return auto;
   // rivet spells a provider key in lower-case letters, digits and "-"
   const key = software.toLowerCase().replace(/[^a-z0-9-]/g, "-");
-  return key ? key + suffix : magpie;
+  return key ? key + suffix : auto;
 }
 
 // shown is the name a provider carries in Tianshu's list, where its key is
 // "workbuddy-magpie": "Workbuddy Magpie". The key stays lower-case, since
 // Tianshu spells the model with it.
 export function shown(key) {
-  if (key === magpie) return "Magpie";
   const base = key.endsWith(suffix) ? key.slice(0, -suffix.length) : key;
   const words = base
     .split("-")

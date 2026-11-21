@@ -43,23 +43,37 @@ test("the package declares this module as its agent, and gives its own picture",
   assert.equal(pkg.dependencies, undefined);
 });
 
-test("gives each software its own provider, and the routing group magpie's", () => {
+test("gives each software its own provider, and the routing group one of its own", () => {
   assert.equal(keyFor("workbuddy/deepseek-v4.1-flash"), "workbuddy-magpie");
   assert.equal(keyFor("codex/gpt-6.2-sol"), "codex-magpie");
   assert.equal(keyFor("minimax-code/MiniMax-M3"), "minimax-code-magpie");
-  assert.equal(keyFor("auto/minimax-m3.1-flash"), "magpie");
-  // an id with no software part names none, so it stays where magpie's own do
-  assert.equal(keyFor("opaque"), "magpie");
-  assert.equal(keyFor("/leading"), "magpie");
-  assert.equal(keyFor("trailing/"), "magpie");
+  assert.equal(keyFor("auto/minimax-m3.1-flash"), "auto-magpie");
+  // an id with no software part names none, so it goes where the group's do
+  assert.equal(keyFor("opaque"), "auto-magpie");
+  assert.equal(keyFor("/leading"), "auto-magpie");
+  assert.equal(keyFor("trailing/"), "auto-magpie");
   // rivet's provider keys are lower-case letters, digits and "-"
   assert.equal(keyFor("WorkBuddy/some-model"), "workbuddy-magpie");
+});
+
+test("never names a provider magpie, whose stale model list outlives an upgrade", () => {
+  // Tianshu keeps a provider's models in ~/.rivet/provider-keys.json, where a
+  // list only grows: the models an older version of this plugin wrote under
+  // "magpie" stay after both a disconnect and a reconnect (checked against a
+  // live install, still 45 of them). Leaving no provider on that key is what
+  // makes those stale ones unreadable instead of needing hand work.
+  const out = connect({
+    gateway,
+    models: [{ id: "auto/minimax-m3.1-flash" }, { id: "workbuddy/one" }, { id: "opaque" }],
+  });
+  assert.ok(!("magpie" in providers(out)), "no provider may be keyed magpie");
+  for (const key of Object.keys(providers(out))) assert.notEqual(key, "magpie");
 });
 
 test("shows a provider by a readable name, and keeps its key lower-case", () => {
   assert.equal(shown("workbuddy-magpie"), "Workbuddy Magpie");
   assert.equal(shown("minimax-code-magpie"), "Minimax Code Magpie");
-  assert.equal(shown("magpie"), "Magpie");
+  assert.equal(shown("auto-magpie"), "Auto Magpie");
 });
 
 test("points every provider at magpie as an OpenAI-compatible one", () => {
@@ -68,7 +82,7 @@ test("points every provider at magpie as an OpenAI-compatible one", () => {
     models: [{ id: "workbuddy/deepseek-v4.1-flash" }, { id: "auto/minimax-m3.1-flash" }],
   });
   const p = providers(out);
-  assert.deepEqual(Object.keys(p).sort(), ["magpie", "workbuddy-magpie"]);
+  assert.deepEqual(Object.keys(p).sort(), ["auto-magpie", "workbuddy-magpie"]);
   assert.deepEqual(p["workbuddy-magpie"], {
     name: "Workbuddy Magpie",
     baseUrl: "http://127.0.0.1:3425/v1",
@@ -76,8 +90,8 @@ test("points every provider at magpie as an OpenAI-compatible one", () => {
     apiKey: "magpie-tianshu",
     models: [{ id: "workbuddy/deepseek-v4.1-flash" }],
   });
-  assert.deepEqual(p.magpie, {
-    name: "Magpie",
+  assert.deepEqual(p["auto-magpie"], {
+    name: "Auto Magpie",
     baseUrl: "http://127.0.0.1:3425/v1",
     protocol: "openai",
     apiKey: "magpie-tianshu",
@@ -85,7 +99,7 @@ test("points every provider at magpie as an OpenAI-compatible one", () => {
   });
 });
 
-test("keeps magpie's provider to the routing group alone", () => {
+test("keeps the routing group's provider to the routing group alone", () => {
   const out = connect({
     gateway,
     models: [
@@ -95,7 +109,7 @@ test("keeps magpie's provider to the routing group alone", () => {
       { id: "doubao/doubao-auto" },
     ],
   });
-  assert.deepEqual(providers(out).magpie.models.map((m) => m.id), ["auto/minimax-m3.1-flash"]);
+  assert.deepEqual(providers(out)["auto-magpie"].models.map((m) => m.id), ["auto/minimax-m3.1-flash"]);
   assert.deepEqual(providers(out)["workbuddy-magpie"].models.map((m) => m.id), ["workbuddy/auto"]);
   assert.deepEqual(providers(out)["codex-magpie"].models.map((m) => m.id), ["codex/gpt-6.2-sol"]);
   assert.deepEqual(providers(out)["doubao-magpie"].models.map((m) => m.id), ["doubao/doubao-auto"]);

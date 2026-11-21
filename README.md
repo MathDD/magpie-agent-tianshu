@@ -4,11 +4,17 @@
 
 ## 订阅软件各占一个渠道
 
-Magpie 会把多个订阅软件的模型都递过来。这个插件**按软件拆开注册**：`workbuddy/…` 的模型进 `workbuddy-magpie`，`codex/…` 的进 `codex-magpie`，`doubao/…` 的进 `doubao-magpie`，以此类推。原来那个 `magpie` 渠道只留 Magpie 自己的路由组 `auto/…`。
+Magpie 会把多个订阅软件的模型都递过来。这个插件**按软件拆开注册**：`workbuddy/…` 的模型进 `workbuddy-magpie`，`codex/…` 的进 `codex-magpie`，`doubao/…` 的进 `doubao-magpie`，以此类推。Magpie 自己的路由组 `auto/…` 不属于任何软件，也有自己的一行：`auto-magpie`。
 
 这样在天枢的供应商列表里，每个订阅是一行，不混在一起。渠道的标识名（key）是小写的 `<软件>-magpie`——天枢要求供应商标识只含小写字母、数字和 `-`；显示名则是 `Workbuddy Magpie` 这样好读的形式。
 
-分组看模型 id 里 `/` 之前那段，与 Magpie 的 `owned_by` 无关：Magpie 递进来的模型只有 id、容量和能力，不带归属软件，而 id 里的前缀正是它。没有 `/` 的模型不属于任何软件，留在 `magpie` 渠道里。
+分组看模型 id 里 `/` 之前那段，与 Magpie 的 `owned_by` 无关：Magpie 递进来的模型只有 id、容量和能力，不带归属软件，而 id 里的前缀正是它。没有 `/` 的模型不属于任何软件，跟路由组一起放在 `auto-magpie`。
+
+### 为什么没有叫 `magpie` 的渠道
+
+`magpie` 是这个插件拆分**之前**用的名字。天枢把供应商的模型列表另存在 `~/.rivet/provider-keys.json`，而那份列表**只增不减**：旧版写进 `magpie` 名下的全部模型，在插件升级后依然留在那儿。实测断开再重连也不清（池里仍是旧版留下的 45 条），天枢自己也不清。
+
+所以路由组的渠道叫 `auto-magpie`，不叫 `magpie`。配置里不再有 `magpie` 这个供应商，那些残留就无所归属，升级不需要任何手工清理。
 
 ## 安装
 
@@ -24,7 +30,16 @@ github:BeyondTokensGGG/magpie-agent-tianshu
 magpie plugin add /绝对路径/magpie-agent-tianshu
 ```
 
-安装后点 Magpie 顶栏的「重新检测本机的 Agent」。保持 Magpie 网关运行。断开：`magpie tianshu default`。
+安装后点 Magpie 顶栏的「重新检测本机的 Agent」。保持 Magpie 网关运行。
+
+接线与断开都走 `provider` 这一个字段：
+
+```sh
+magpie tianshu provider magpie   # 接线
+magpie tianshu provider default  # 断开，恢复成接入前的样子
+```
+
+**不要**用 `magpie tianshu <模型>`——这个插件不声明 `model` 字段（原因见下节），所以天枢那边没有「模型」这个字段可设，那条命令会报 `has no field "model"`，旧文档里写的 `magpie tianshu magpie/provider/model` 是错的。选具体模型请在天枢里选。
 
 ## 天枢怎么命名模型
 
@@ -46,10 +61,10 @@ magpie plugin add /绝对路径/magpie-agent-tianshu
 ```json
 {
   "provider": {
-    "default": "magpie",
+    "default": "auto-magpie",
     "providers": {
-      "magpie": {
-        "name": "Magpie",
+      "auto-magpie": {
+        "name": "Auto Magpie",
         "baseUrl": "http://127.0.0.1:3425/v1",
         "protocol": "openai",
         "apiKey": "magpie-tianshu",
@@ -64,7 +79,7 @@ magpie plugin add /绝对路径/magpie-agent-tianshu
       }
     }
   },
-  "agent": { "defaultModel": "magpie:auto/minimax-m3.1-flash" }
+  "agent": { "defaultModel": "auto-magpie:auto/minimax-m3.1-flash" }
 }
 ```
 
