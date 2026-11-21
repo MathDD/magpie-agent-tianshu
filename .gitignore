@@ -2,4 +2,7 @@ node_modules/
 *.tgz
 .sandbox/
 .env
+# Tianshu's own runtime state: the folder it keeps settings in, and the
+# instructions file it rewrites every session. Neither is this plugin's.
 .rivet/
+.rivet.md
